@@ -13,9 +13,9 @@ Official pytorch implementation of the paper:
 }
 ```-->
 
-**Overview.** We introduce a Bayesian meta-learning method based on [Gaussian Processes (GPs)](https://en.wikipedia.org/wiki/Gaussian_process) to tackle the problem of few-shot learning. We propose a simple, yet effective variant of deep kernel learning in which the kernel is transferred across tasks, which we call *Deep Kernel Transfer (DKT)*. This approach is straightforward to implement, provides uncertainty quantification, and does not require estimation of task-specific parameters. We empirically demonstrate that DKT outperforms several state-of-the-art algorithms in few-shot regression, classification, and cross-domain adaptation.
+<!-- **Overview.** We introduce a Bayesian meta-learning method based on [Gaussian Processes (GPs)](https://en.wikipedia.org/wiki/Gaussian_process) to tackle the problem of few-shot learning. We propose a simple, yet effective variant of deep kernel learning in which the kernel is transferred across tasks, which we call *Deep Kernel Transfer (DKT)*. This approach is straightforward to implement, provides uncertainty quantification, and does not require estimation of task-specific parameters. We empirically demonstrate that DKT outperforms several state-of-the-art algorithms in few-shot regression, classification, and cross-domain adaptation.
 
-**NOTE**: previous pre-prints of this paper have used the names "GPNet" and "GPShot". In the published version we are using the name "DKT".
+**NOTE**: previous pre-prints of this paper have used the names "GPNet" and "GPShot". In the published version we are using the name "DKT". -->
 
 Requirements
 -------------
@@ -26,7 +26,7 @@ Requirements
 4. [GPyTorch](https://gpytorch.ai/) >= 0.3.5
 5. (optional) [TensorboardX](https://pypi.org/project/tensorboardX/) 
  
-**WARNING:** some users have experienced issues in running some of the scripts due to the error: *"Matrix not positive definite"*. This is likely caused by the latest versions of GPyTorch. The configuration that is working on our system uses: `gpytorch 1.0.1, python 3.6.9, torch 1.8.1`. We suggest to replicate this configuration in a conda environment in case you experience the same issue.
+<!-- **WARNING:** some users have experienced issues in running some of the scripts due to the error: *"Matrix not positive definite"*. This is likely caused by the latest versions of GPyTorch. The configuration that is working on our system uses: `gpytorch 1.0.1, python 3.6.9, torch 1.8.1`. We suggest to replicate this configuration in a conda environment in case you experience the same issue. -->
 
 
 Installation
@@ -36,16 +36,16 @@ Installation
 pip install numpy torch torchvision gpytorch h5py pillow
 ```
 
-We confirm that the following configuration worked for us: numpy 1.18.1, torch 1.4.0, torchvision 0.5.0, gpytorch 1.0.1, h5py 5.10.0, pillow 7.0.0
+We confirm that the following configuration worked for us: numpy 1.22.4, torch 1.11.0, torchvision 0.12.0, gpytorch 1.9.0, h5py 3.4.0, pillow 9.1.1
 
-DKT: code of our method
+CDKT: code of our method
 --------------------------
 
-**Regression.** The implementation of our method is based on the [gpyTorch](https://gpytorch.ai/) library. The code for the regression case is available in [DKT_regression.py](./methods/DKT_regression.py).
+<!-- **Regression.** The implementation of our method is based on the [gpyTorch](https://gpytorch.ai/) library. The code for the regression case is available in [DKT_regression.py](./methods/DKT_regression.py). -->
 
-**Classification.** The code for the classification case is accessible in [DKT.py](./methods/DKT.py), with most of the important pieces contained in the `train_loop()` method (training), and in the `correct()` method (testing). 
+**Classification.** The code for the classification case is accessible in [CDKT.py](./methods/CDKT.py), with most of the important pieces contained in the `train_loop()` method (training), and in the `correct()` method (testing). 
 
-Note: there is the possibility of using the [scikit](https://scikit-learn.org/stable/modules/gaussian_process.html) Laplace approximation at test time (classification only), setting `laplace=True` in `correct()`. However, this has not been investigated enough and it is not the method used in the paper.
+<!-- Note: there is the possibility of using the [scikit](https://scikit-learn.org/stable/modules/gaussian_process.html) Laplace approximation at test time (classification only), setting `laplace=True` in `correct()`. However, this has not been investigated enough and it is not the method used in the paper. -->
 
 Experiments
 ============
@@ -59,9 +59,11 @@ cd filelists/DATASET_NAME/
 sh download_DATASET_NAME.sh
 ```
 
-Replace `DATASET_NAME` with one of the following: `omniglot`, `CUB`, `miniImagenet`, `emnist`, `QMUL`. Notice that mini-ImageNet is a large dataset that requires substantial storage, therefore you can save the dataset in another location and then change the entry in `configs.py` in accordance.
+Replace `DATASET_NAME` with one of the following: `CUB`, `miniImagenet`. Notice that the link to mini-Imagenet is no longer available on the official website. We refer to [mini-imagenet-tools](https://github.com/yaoyao-liu/mini-imagenet-tools) for various alternatives to downloading the dataset. 
 
-**Methods.** There are a few available methods that you can use: `DKT`, `maml`, `maml_approx`, `protonet`, `relationnet`, `matchingnet`, `baseline`, `baseline++`. You must use those exact strings at training and test time when you call the script (see below). Note that our method is `DKT`, and that `baseline` corresponds to feature transfer in our paper. By default DKT has a `BNCosSim` kernel, to change this please edit the entry in `configs.py`.
+<!-- Notice that mini-ImageNet is a large dataset that requires substantial storage, therefore you can save the dataset in another location and then change the entry in `configs.py` in accordance. -->
+
+<!-- **Methods.** There are a few available methods that you can use: `DKT`, `maml`, `maml_approx`, `protonet`, `relationnet`, `matchingnet`, `baseline`, `baseline++`. You must use those exact strings at training and test time when you call the script (see below). Note that our method is `DKT`, and that `baseline` corresponds to feature transfer in our paper. By default DKT has a `BNCosSim` kernel, to change this please edit the entry in `configs.py`.
 
 **Backbone.** The script allows training and testing on different backbone networks. By default the script will use the same backbone used in our experiments (`Conv4`). Check the file `backbone.py` for the available architectures, and use the parameter `--model=BACKBONE_STRING` where `BACKBONE_STRING` is one of the following: `Conv4`, `Conv6`, `ResNet10|18|34|50|101`.
 
@@ -83,27 +85,33 @@ python test_regression.py --method="DKT" --seed=1
 You can additionally specify the size of the support set with `--n_support` (which defaults to 5), and the number of test epochs with `--n_test_epochs` (which defaults to 10). 
 
 
-**Periodic functions.** The code for the periodic functions experiments is available in the [sines](./sines) folder. This needs some adjustment of the parameters at the code level to reproduce the in-range and out-of-range conditions (see the associated [README](./sines/README.md)).
+**Periodic functions.** The code for the periodic functions experiments is available in the [sines](./sines) folder. This needs some adjustment of the parameters at the code level to reproduce the in-range and out-of-range conditions (see the associated [README](./sines/README.md)). -->
 
 
 Classification
 ---------------
 
-**Train classification.** The various methods can be trained using the following syntax:
+**Train classification.** Our methods can be trained using the following syntax:
 
 ```
-python train.py --dataset="miniImagenet" --method="DKT" --train_n_way=5 --test_n_way=5 --n_shot=1 --seed=1 --train_aug
+python train.py --dataset="CUB" --method="CDKT" --train_n_way=5 --test_n_way=5 --n_shot=1 --seed=1 --train_aug --steps=2 --tau=0.2 --loss="ELBO"
 ```
 
-This will train DKT 5-way 1-shot on the mini-ImageNet dataset with seed 1. The `dataset` string can be one of the following: `CUB`, `miniImagenet`. At training time the best model is evaluated on the validation set and stored as `best_model.tar` in the folder `./save/checkpoints/DATASET_NAME`. The parameter `--train_aug` enables data augmentation. The parameter `seed` set the seed for pytorch, numpy, and random. Set `--seed=0` or remove the parameter for a random seed. Additional parameters are reported in the file `io_utils.py`.
+This will train CDKT 5-way 1-shot on the CUB dataset with seed 1, temperature 0.2, and the ELBO loss. The `dataset` string can be one of the following: `CUB`, `miniImagenet`, `cross`. At training time the best model is evaluated on the validation set and stored as `best_model.tar` in the folder `./save/checkpoints/DATASET_NAME`. The parameter `--train_aug` enables data augmentation. The parameter `seed` set the seed for pytorch, numpy, and random. Set `--seed=0` or remove the parameter for a random seed. Additional parameters are reported in the file `io_utils.py`. The parameter `steps` control the task-level update steps for mean-field approximation. The parameter `tau` set the temperature for the logistic-softmax likelihood. The parameter `loss` can be `ELBO` or `PLL`, corresponding to the ELBO loss and the predictive likelihood loss. Additional parameters are provided, such as `mean` and `kernel`, where `mean` sets the prior mean for GP (default is 0) and the choices of kernel include `linear`, `rbf`,  `matern`, `poli1`, `poli2`, `bncossim`.
 
-**Test classification.** For testing `DKT`, `maml` and `maml_approx` it is enough to repeat the train command replacing the call to `train.py` with the call to `test.py` as follows:
+**Test classification.** For testing our methods it is enough to repeat the train command replacing the call to `train.py` with the call to `test.py` as follows:
 
 ```
-python test.py --dataset="miniImagenet" --method="DKT" --train_n_way=5 --test_n_way=5 --n_shot=1 --seed=1 --train_aug
+python test.py --dataset="CUB" --method="CDKT" --train_n_way=5 --test_n_way=5 --n_shot=1 --seed=1 --train_aug --steps=2 --tau=0.2 --loss="ELBO"
 ```
 
-Other methods require to store the features (for efficiency) before testing, this can be done running the script `save_features.py` before calling `test.py`. For instance, if you trained a `protonet`, you should call:
+**Calibration.** For calibrating our methods it is enough to repeat the train command replacing the call to `train.py` with the call to `calibrate.py` as follows:
+
+```
+python calibrate.py --dataset="CUB" --method="CDKT" --train_n_way=5 --test_n_way=5 --n_shot=1 --seed=1 --train_aug --steps=2 --tau=0.2 --loss="ELBO"
+```
+
+<!-- Other methods require to store the features (for efficiency) before testing, this can be done running the script `save_features.py` before calling `test.py`. For instance, if you trained a `protonet`, you should call:
 
 ```
 python save_features.py --dataset="miniImagenet" --method="protonet" --train_n_way=5 --test_n_way=5 --n_shot=1 --seed=1 --train_aug
@@ -122,10 +130,10 @@ For the cross-domain classification experiments the procedure is the same descri
 python train.py --dataset="cross_char" --method="DKT" --train_n_way=5 --test_n_way=5 --n_shot=1 --seed=1
 ```
 
-Note that the parameter `--train_aug` (data augmentation) is not used for `cross_char` but only for `cross`.
+Note that the parameter `--train_aug` (data augmentation) is not used for `cross_char` but only for `cross`. -->
 
 
 Acknowledgements
 ---------------
 
-This repository is a fork of: [https://github.com/wyharveychen/CloserLookFewShot](https://github.com/wyharveychen/CloserLookFewShot)
+This repository is a fork of: [https://github.com/BayesWatch/deep-kernel-transfer](https://github.com/BayesWatch/deep-kernel-transfer)
