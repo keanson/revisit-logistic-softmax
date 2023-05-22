@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim
 import torch.optim.lr_scheduler as lr_scheduler
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, CosineAnnealingLR, CyclicLR
 import time
 import os
 import glob
@@ -15,6 +16,7 @@ from data.datamgr import SimpleDataManager, SetDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
 from methods.DKT import DKT
+from methods.CDKT_v4 import CDKT
 from methods.protonet import ProtoNet
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
@@ -37,7 +39,23 @@ def _set_seed(seed, verbose=True):
 def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch, params):
     print("Tot epochs: " + str(stop_epoch))
     if optimization == 'Adam':
-        optimizer = torch.optim.Adam(model.parameters())
+        if params.method in ['CDKT']:
+            flag = model.get_negmean(params.mean)
+            model.get_kernel_type(params.kernel)
+            if flag:
+                optimizer = torch.optim.Adam([{'params': model.model.parameters(), 'lr': 1e-4},
+                                              {'params': model.feature_extractor.parameters(), 'lr': 1e-3},
+                                              {'params': model.NEGMEAN, 'lr': 1e-4}])
+            else:
+                optimizer = torch.optim.Adam([{'params': model.model.parameters(), 'lr': 1e-4},
+                                      {'params': model.feature_extractor.parameters(), 'lr': 1e-3}])
+            model.get_steps(params.steps)
+            model.get_temperature(params.tau)
+            model.get_loss(params.loss)
+            # model.get_kernel_type(params.kernel)
+
+        else:
+            optimizer = torch.optim.Adam(model.parameters())
     else:
         raise ValueError('Unknown optimization, please define by yourself')
 
@@ -52,8 +70,14 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
 
         if not os.path.isdir(params.checkpoint_dir):
             os.makedirs(params.checkpoint_dir)
-
-        acc = model.test_loop(val_loader)
+        
+        if epoch > params.stop_epoch - 100:          
+            acc = model.test_loop(val_loader)
+        elif params.dataset in ['cross_char']:
+            acc = model.test_loop(val_loader)
+        else:
+            acc = 0.
+            
         if acc > max_acc:  # for baseline and baseline++, we don't use validation here so we let acc = -1
             print("--> Best model! save...")
             max_acc = acc
@@ -68,7 +92,18 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
 
 
 if __name__ == '__main__':
+    device = 'cuda:0'
+    torch.autograd.set_detect_anomaly(True)
     params = parse_args('train')
+    # train classification configuration
+    params.train_n_way = 5
+    params.test_n_way = 5
+    if params.dataset == "cross_char":
+        params.train_aug = False
+    else:
+        params.train_aug = True
+    print(params)
+    #
     _set_seed(parse_args('train').seed)
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json'
@@ -110,7 +145,24 @@ if __name__ == '__main__':
             elif params.n_shot == 5:
                 params.stop_epoch = 400
             else:
-                params.stop_epoch = 600  # default
+                params.stop_epoch = 600 # default
+        if params.dataset in ['cross_char']:
+                params.stop_epoch = 100
+    
+    if params.loss == "PLL":
+        params.stop_epoch = 800
+        print("Update stop_epoch: {}".format(params.stop_epoch))
+    
+    if params.dataset == "miniImagenet":
+        if params.n_shot == 5:
+            params.stop_epoch = 800
+            print("Update stop_epoch: {}".format(params.stop_epoch))
+            
+    if params.dataset == "cross":
+        if params.n_shot == 1:
+            if params.loss == "ELBO":
+                params.stop_epoch = 800
+                print("Update stop_epoch: {}".format(params.stop_epoch))
 
     if params.method in ['baseline', 'baseline++']:
         base_datamgr = SimpleDataManager(image_size, batch_size=16)
@@ -128,10 +180,10 @@ if __name__ == '__main__':
         elif params.method == 'baseline++':
             model = BaselineTrain(model_dict[params.model], params.num_classes, loss_type='dist')
 
-    elif params.method in ['DKT', 'protonet', 'matchingnet', 'relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
+    elif params.method in ['CDKT', 'DKT', 'protonet', 'matchingnet', 'relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(
             16 * params.test_n_way / params.train_n_way))  # if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
-
+            
         train_few_shot_params = dict(n_way=params.train_n_way, n_support=params.n_shot)
         base_datamgr = SetDataManager(image_size, n_query=n_query, **train_few_shot_params) #n_eposide=100
         base_loader = base_datamgr.get_data_loader(base_file, aug=params.train_aug)
@@ -143,6 +195,9 @@ if __name__ == '__main__':
 
         if(params.method == 'DKT'):
             model = DKT(model_dict[params.model], **train_few_shot_params)
+            model.init_summary()
+        elif(params.method == 'CDKT'):
+            model = CDKT(model_dict[params.model], **train_few_shot_params)
             model.init_summary()
         elif params.method == 'protonet':
             model = ProtoNet(model_dict[params.model], **train_few_shot_params)
@@ -173,13 +228,24 @@ if __name__ == '__main__':
     else:
         raise ValueError('Unknown method')
 
-    model = model.cuda()
+    model = model.to(device)
 
     params.checkpoint_dir = '%s/checkpoints/%s/%s_%s' % (configs.save_dir, params.dataset, params.model, params.method)
+    
     if params.train_aug:
         params.checkpoint_dir += '_aug'
     if not params.method in ['baseline', 'baseline++']:
         params.checkpoint_dir += '_%dway_%dshot' % (params.train_n_way, params.n_shot)
+
+    if params.method in ['CDKT']:
+        tau = str(params.tau).replace('.', 'dot')
+        params.checkpoint_dir += '_%s_%stau_%dsteps' % (params.loss, tau, params.steps)
+        if params.mean < 0:
+            params.checkpoint_dir += '_negmean'
+        if params.mean > 0:
+            mean = str(params.mean).replace('.', 'dot')
+            params.checkpoint_dir += '_%smean' % (mean)
+        params.checkpoint_dir += '_%s' % (params.kernel)
 
     if not os.path.isdir(params.checkpoint_dir):
         os.makedirs(params.checkpoint_dir)
@@ -216,4 +282,5 @@ if __name__ == '__main__':
         else:
             raise ValueError('No warm_up file')
 
+    # model = torch.compile(model)
     model = train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch, params)
