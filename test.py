@@ -18,6 +18,7 @@ from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
 from methods.protonet import ProtoNet
 from methods.DKT import DKT
+from methods.CDKT_v4 import CDKT
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
@@ -78,6 +79,8 @@ def single_test(params):
         model           = ProtoNet( model_dict[params.model], **few_shot_params )
     elif params.method == 'DKT':
         model           = DKT(model_dict[params.model], **few_shot_params)
+    elif params.method == 'CDKT':
+        model           = CDKT(model_dict[params.model], **few_shot_params)
     elif params.method == 'matchingnet':
         model           = MatchingNet( model_dict[params.model], **few_shot_params )
     elif params.method in ['relationnet', 'relationnet_softmax']:
@@ -111,9 +114,26 @@ def single_test(params):
         checkpoint_dir += '_aug'
     if not params.method in ['baseline', 'baseline++'] :
         checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
+    if params.method in ['CDKT']:
+        tau = str(params.tau).replace('.', 'dot')
+        checkpoint_dir += '_%s_%stau_%dsteps' % (params.loss, tau, params.steps)
+        if params.mean < 0:
+            checkpoint_dir += '_negmean'
+        if params.mean > 0:
+            mean = str(params.mean).replace('.', 'dot')
+            checkpoint_dir += '_%smean' % (mean)
+        checkpoint_dir += '_%s' % (params.kernel)
 
     #modelfile   = get_resume_file(checkpoint_dir)
-
+    if params.method in ['CDKT']:
+        model.get_steps(params.steps)
+        model.get_temperature(params.tau)
+        model.get_loss(params.loss)
+        model.get_negmean(params.mean)
+        model.get_kernel_type(params.kernel)
+        # shift
+        model.get_negmean(-5)
+        
     if not params.method in ['baseline', 'baseline++'] : 
         if params.save_iter != -1:
             modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
@@ -124,13 +144,15 @@ def single_test(params):
             model.load_state_dict(tmp['state'])
         else:
             print("[WARNING] Cannot find 'best_file.tar' in: " + str(checkpoint_dir))
+    
 
     split = params.split
     if params.save_iter != -1:
         split_str = split + "_" +str(params.save_iter)
     else:
         split_str = split
-    if params.method in ['maml', 'maml_approx', 'DKT']: #maml do not support testing with feature
+
+    if params.method in ['maml', 'maml_approx', 'DKT', 'CDKT']: #maml do not support testing with feature
         if 'Conv' in params.model:
             if params.dataset in ['omniglot', 'cross_char']:
                 image_size = 28
@@ -186,6 +208,19 @@ def single_test(params):
 
 def main():        
     params = parse_args('test')
+    # params.dataset = 'CUB'
+    # params.train_n_way = 5
+    # params.test_n_way = 5
+    # params.n_shot = 5
+    # params.train_aug = True
+    # params.steps = 5
+    # params.method = 'CDKT'
+    # params.seed = 1
+    if params.dataset == "cross_char":
+        params.train_aug = False
+    else:
+        params.train_aug = True
+
     seed = params.seed
     repeat = params.repeat
     #repeat the test N times changing the seed in range [seed, seed+repeat]
@@ -193,7 +228,8 @@ def main():
     for i in range(seed, seed+repeat):
         if(seed!=0): _set_seed(i)
         else: _set_seed(0)
-        accuracy_list.append(single_test(parse_args('test')))
+        # accuracy_list.append(single_test(parse_args('test')))
+        accuracy_list.append(single_test(params))
     print("-----------------------------")
     print('Seeds = %d | Overall Test Acc = %4.2f%% +- %4.2f%%' %(repeat, np.mean(accuracy_list), np.std(accuracy_list)))
     print("-----------------------------")        
