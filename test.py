@@ -207,20 +207,6 @@ def single_test(params):
     return acc_mean
 
 def main():        
-    params = parse_args('test')
-    # params.dataset = 'CUB'
-    # params.train_n_way = 5
-    # params.test_n_way = 5
-    # params.n_shot = 5
-    # params.train_aug = True
-    # params.steps = 5
-    # params.method = 'CDKT'
-    # params.seed = 1
-    if params.dataset == "cross_char":
-        params.train_aug = False
-    else:
-        params.train_aug = True
-
     seed = params.seed
     repeat = params.repeat
     #repeat the test N times changing the seed in range [seed, seed+repeat]
