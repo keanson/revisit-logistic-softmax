@@ -93,15 +93,10 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
 
 if __name__ == '__main__':
     device = 'cuda:0'
-    torch.autograd.set_detect_anomaly(True)
     params = parse_args('train')
     # train classification configuration
     params.train_n_way = 5
     params.test_n_way = 5
-    if params.dataset == "cross_char":
-        params.train_aug = False
-    else:
-        params.train_aug = True
     print(params)
     #
     _set_seed(parse_args('train').seed)
@@ -146,8 +141,6 @@ if __name__ == '__main__':
                 params.stop_epoch = 400
             else:
                 params.stop_epoch = 600 # default
-        if params.dataset in ['cross_char']:
-                params.stop_epoch = 100
     
     if params.loss == "PLL":
         params.stop_epoch = 800
