@@ -1,15 +1,17 @@
 Official pytorch implementation of the paper: 
 
-*"Bayesian Meta-Learning for the Few-Shot Setting via Deep Kernels"* (2020) Patacchiola, M., Turner, J., Crowley, E. J., O'Boyle, M., & Storkey, A., *Advances in Neural Information Processing (NeurIPS, Spotlight)* [[arXiv]](https://arxiv.org/abs/1910.05199)
+<!-- *"Bayesian Meta-Learning for the Few-Shot Setting via Deep Kernels"* (2020) Patacchiola, M., Turner, J., Crowley, E. J., O'Boyle, M., & Storkey, A., *Advances in Neural Information Processing (NeurIPS, Spotlight)* [[arXiv]](https://arxiv.org/abs/1910.05199) -->
 
-```bibtex
+*"Revisiting Logistic-softmax Likelihood in Bayesian Meta-learning for Few-shot Classification"*
+
+<!--```bibtex
 @inproceedings{patacchiola2020bayesian,
   title={Bayesian Meta-Learning for the Few-Shot Setting via Deep Kernels},
   author={Patacchiola, Massimiliano and Turner, Jack and Crowley, Elliot J. and Storkey, Amos},
   booktitle={Advances in Neural Information Processing Systems},
   year={2020}
 }
-```
+```-->
 
 **Overview.** We introduce a Bayesian meta-learning method based on [Gaussian Processes (GPs)](https://en.wikipedia.org/wiki/Gaussian_process) to tackle the problem of few-shot learning. We propose a simple, yet effective variant of deep kernel learning in which the kernel is transferred across tasks, which we call *Deep Kernel Transfer (DKT)*. This approach is straightforward to implement, provides uncertainty quantification, and does not require estimation of task-specific parameters. We empirically demonstrate that DKT outperforms several state-of-the-art algorithms in few-shot regression, classification, and cross-domain adaptation.
 
