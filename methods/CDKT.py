@@ -27,13 +27,10 @@ except ImportError:
     print('[WARNING] install tensorboardX to record simulation logs.')
 
 ## Training CMD
-#ATTENTION: to test each method use exaclty the same command but replace 'train.py' with 'test.py'
-# Omniglot->EMNIST without data augmentation
-#python3 train.py --dataset="cross_char" --method="DKT" --train_n_way=5 --test_n_way=5 --n_shot=1
-#python3 train.py --dataset="cross_char" --method="DKT" --train_n_way=5 --test_n_way=5 --n_shot=5
+#ATTENTION: to test each method use exaclty the same command but replace 'train.py' with 'test.py' or 'calibrate.py'
 # CUB + data augmentation
-#python3 train.py --dataset="CUB" --method="DKT" --train_n_way=5 --test_n_way=5 --n_shot=1 --train_aug
-#python3 train.py --dataset="CUB" --method="DKT" --train_n_way=5 --test_n_way=5 --n_shot=5 --train_aug
+#python3 train.py --dataset="CUB" --method="CDKT" --train_n_way=5 --test_n_way=5 --n_shot=1 --train_aug --tau=1 --loss='ELBO' --steps=2 --seed=1
+#python3 train.py --dataset="CUB" --method="CDKT" --train_n_way=5 --test_n_way=5 --n_shot=5 --train_aug --tau=1 --loss='ELBO' --steps=2 --seed=1
 
 class CDKT(MetaTemplate):
     def __init__(self, model_func, n_way, n_support):
@@ -312,25 +309,25 @@ class CDKT(MetaTemplate):
             mean_vec = torch.ones((output.shape[0], output.shape[1])).to(self.device) * self.NEGMEAN
 
             for step in range(steps):
-                # 8a
+                # 4.4a
                 tilde_f = torch.sqrt(mu ** 2 + torch.diagonal(sigma, dim1=1, dim2=2)) / temperature
-                # 8b
+                # 4.4b
                 psi = torch.digamma(alpha)
                 psi = psi.repeat(C, 1) # make it C, N
                 gamma = torch.exp(psi - 0.5 * mu  / temperature) / (2 * C * torch.cosh(0.5 * tilde_f).clamp(min=1e-6))
-                # 8c
+                # 4.4c
                 alpha = gamma.sum(axis=0) + 1
-                # 8d
+                # 4.4d
                 try:
                     sigma = torch.linalg.inv(torch.linalg.inv(output) + torch.diag_embed(omega  / temperature ** 2))
                 except:
                     sigma = output
-                # 8e
+                # 4.4e
                 try:
                     mu = 0.5 / temperature * torch.bmm(sigma, (Y - gamma).unsqueeze(2)).squeeze(2) + torch.bmm(torch.linalg.inv(torch.bmm(output, torch.diag_embed(omega  / temperature ** 2)) + torch.eye(output.shape[1], device=self.device).unsqueeze(0).repeat(output.shape[0], 1, 1)), mean_vec.unsqueeze(2)).squeeze(2)
                 except:
                     mu = 0.5 / temperature * torch.bmm(sigma, (Y - gamma).unsqueeze(2)).squeeze(2) + mean_vec
-                # 8f
+                # 4.4f
                 omega = (gamma + Y) * torch.tanh(0.5 * tilde_f) * 0.5 / tilde_f.clamp(min=1e-6)  
                 omega = omega.clamp(min=1e-6)
             return mu, sigma    
@@ -394,32 +391,32 @@ class CDKT(MetaTemplate):
         psi_ls = [psi]
         
         for step in range(steps):
-            # 8a
+            # 4.4a
             tilde_f_ls.append(torch.sqrt(mu_ls[-1].data ** 2 + torch.diagonal(sigma_ls[-1].data, dim1=1, dim2=2)) / temperature)
-            # 8b
+            # 4.4b
             # psi_ls.append(torch.polygamma(1, alpha_ls[-1]).repeat(C, 1)) # make it C, N
             psi_ls.append(torch.digamma(alpha_ls[-1]).repeat(C, 1))
             gamma_ls.append((torch.exp(psi_ls[-1] - 0.5 * mu_ls[-1] / temperature) / (2 * C * torch.cosh(0.5 * tilde_f_ls[-1]))).nan_to_num(nan=0., posinf=0., neginf=0.).clamp(min=1e-6))
-            # 8c
+            # 4.4c
             alpha_ls.append(gamma_ls[-1].sum(axis=0) + 1)
-            # 8d
+            # 4.4d
             try:
                 sigma_ls.append(torch.linalg.inv(torch.linalg.inv(output) + torch.diag_embed(omega_ls[-1] / temperature ** 2)))
             except:
                 sigma_ls.append(output)
 
-            # 8e
+            # 4.4e
             # mu_ls.append(0.5 / temperature * torch.bmm(sigma_ls[-1], (Y - gamma_ls[-1]).unsqueeze(2)).squeeze(2))
             try:
                 mu_ls.append(0.5 / temperature * torch.bmm(sigma_ls[-1], (Y - gamma_ls[-1]).unsqueeze(2)).squeeze(2) + torch.bmm(torch.linalg.inv(torch.bmm(output, torch.diag_embed(omega_ls[-1]  / temperature ** 2)) + torch.eye(output.shape[1], device=self.device).unsqueeze(0).repeat(output.shape[0], 1, 1)), mean_vec.unsqueeze(2)).squeeze(2))
             except:
                 mu_ls.append(0.5 / temperature * torch.bmm(sigma_ls[-1], (Y - gamma_ls[-1]).unsqueeze(2)).squeeze(2) + mean_vec)
-            # 8f
+            # 4.4f
             omega_ls.append(((gamma_ls[-1] + Y) * torch.tanh(0.5 * tilde_f_ls[-1]) * 0.5 / tilde_f_ls[-1]).clamp(min=1e-6))
         
         eps = 1e-6
         ELBO = 0.
-        # 0.5 * (omega[-1] * tilde_f[-1] ** 2).sum() 被最后一行消掉了
+        # 0.5 * (omega[-1] * tilde_f[-1] ** 2).sum() appears in line 1 and last line so addition is 0
         ELBO = ELBO - math.log(2) * (Y + gamma_ls[-1]).sum() + 0.5 * ((Y - gamma_ls[-1]) * mu_ls[-1] / temperature).sum()
         L = psd_safe_cholesky(output)
         ELBO = ELBO - 0.5 * (torch.logdet(output).sum() - torch.logdet(sigma_ls[-1]).sum() + torch.cholesky_solve((sigma_ls[-1] + torch.bmm((self.NEGMEAN - mu_ls[-1].reshape(C, N, 1)), (self.NEGMEAN - mu_ls[-1].reshape(C, 1, N)))), L).diagonal(dim1=-1, dim2=-2).sum())
@@ -469,27 +466,27 @@ class CDKT(MetaTemplate):
         omega_ls = [omega]
         psi_ls = [psi]
         for step in range(steps):
-            # 8a
+            # 4.4a
             tilde_f_ls.append(torch.sqrt(mu_ls[-1].data ** 2 + torch.diagonal(sigma_ls[-1].data, dim1=1, dim2=2)) / temperature)
-            # 8b
+            # 4.4b
             # psi_ls.append(torch.polygamma(1, alpha_ls[-1]).repeat(C, 1)) # make it C, N
             psi_ls.append(torch.digamma(alpha_ls[-1]).repeat(C, 1))
             gamma_ls.append((torch.exp(psi_ls[-1] - 0.5 * mu_ls[-1] / temperature) / (2 * C * torch.cosh(0.5 * tilde_f_ls[-1]))).nan_to_num(nan=0., posinf=0., neginf=0.).clamp(min=1e-6))
-            # 8c
+            # 4.4c
             alpha_ls.append(gamma_ls[-1].sum(axis=0) + 1)
-            # 8d
+            # 4.4d
             try:
                 sigma_ls.append(torch.linalg.inv(torch.linalg.inv(output) + torch.diag_embed(omega_ls[-1] / temperature ** 2)))
             except:
                 sigma_ls.append(output)
 
-            # 8e
+            # 4.4e
             # mu_ls.append(0.5 / temperature * torch.bmm(sigma_ls[-1], (Y - gamma_ls[-1]).unsqueeze(2)).squeeze(2))
             try:
                 mu_ls.append(0.5 / temperature * torch.bmm(sigma_ls[-1], (Y - gamma_ls[-1]).unsqueeze(2)).squeeze(2) + torch.bmm(torch.linalg.inv(torch.bmm(output, torch.diag_embed(omega_ls[-1]  / temperature ** 2)) + torch.eye(output.shape[1], device=self.device).unsqueeze(0).repeat(output.shape[0], 1, 1)), mean_vec.unsqueeze(2)).squeeze(2))
             except:
                 mu_ls.append(0.5 / temperature * torch.bmm(sigma_ls[-1], (Y - gamma_ls[-1]).unsqueeze(2)).squeeze(2) + mean_vec)
-            # 8f
+            # 4.4f
             omega_ls.append(((gamma_ls[-1] + Y) * torch.tanh(0.5 * tilde_f_ls[-1]) * 0.5 / tilde_f_ls[-1]).clamp(min=1e-6))
                 
         self.mu = mu_ls[-1].detach()
