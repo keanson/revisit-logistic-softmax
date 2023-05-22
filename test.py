@@ -18,7 +18,7 @@ from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
 from methods.protonet import ProtoNet
 from methods.DKT import DKT
-from methods.CDKT_v4 import CDKT
+from methods.CDKT import CDKT
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
