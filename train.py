@@ -16,7 +16,7 @@ from data.datamgr import SimpleDataManager, SetDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
 from methods.DKT import DKT
-from methods.CDKT_v4 import CDKT
+from methods.CDKT import CDKT
 from methods.protonet import ProtoNet
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
