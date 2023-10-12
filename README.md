@@ -133,7 +133,7 @@ python train.py --dataset="cross_char" --method="DKT" --train_n_way=5 --test_n_w
 Note that the parameter `--train_aug` (data augmentation) is not used for `cross_char` but only for `cross`. -->
 
 
-<!-- Acknowledgements
+Acknowledgements
 ---------------
 
-This repository is a fork of: [https://github.com/BayesWatch/deep-kernel-transfer](https://github.com/BayesWatch/deep-kernel-transfer) -->
+This repository is a fork of: [https://github.com/BayesWatch/deep-kernel-transfer](https://github.com/BayesWatch/deep-kernel-transfer)
