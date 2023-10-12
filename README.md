@@ -136,4 +136,4 @@ Note that the parameter `--train_aug` (data augmentation) is not used for `cross
 Acknowledgements
 ---------------
 
-This repository is a fork of: [https://github.com/BayesWatch/deep-kernel-transfer](https://github.com/BayesWatch/deep-kernel-transfer)
+This repository is a fork of [https://github.com/BayesWatch/deep-kernel-transfer](https://github.com/BayesWatch/deep-kernel-transfer).
