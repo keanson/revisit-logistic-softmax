@@ -12,9 +12,7 @@ model_dict = dict(
             ResNet18 = backbone.ResNet18,
             ResNet34 = backbone.ResNet34,
             ResNet50 = backbone.ResNet50,
-            ResNet101 = backbone.ResNet101,
-            ResNet50pretrained = backbone.ResNet50pretrained,
-            ResNet18pretrained = backbone.ResNet18pretrained)
+            ResNet101 = backbone.ResNet101)
 
 def parse_args(script):
     parser = argparse.ArgumentParser(description= 'few-shot script %s' %(script))
